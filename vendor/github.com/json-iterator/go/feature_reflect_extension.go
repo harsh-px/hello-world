@@ -245,10 +245,7 @@ func describeStruct(cfg *frozenConfig, prefix string, typ reflect.Type) *StructD
 	bindings := []*Binding{}
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
-		tag, hastag := field.Tag.Lookup(cfg.getTagKey())
-		if cfg.onlyTaggedField && !hastag {
-			continue
-		}
+		tag := field.Tag.Get(cfg.getTagKey())
 		tagParts := strings.Split(tag, ",")
 		if tag == "-" {
 			continue
@@ -269,9 +266,9 @@ func describeStruct(cfg *frozenConfig, prefix string, typ reflect.Type) *StructD
 				for _, binding := range structDescriptor.Fields {
 					binding.levels = append([]int{i}, binding.levels...)
 					omitempty := binding.Encoder.(*structFieldEncoder).omitempty
-					binding.Encoder = &dereferenceEncoder{binding.Encoder}
+					binding.Encoder = &OptionalEncoder{binding.Encoder}
 					binding.Encoder = &structFieldEncoder{&field, binding.Encoder, omitempty}
-					binding.Decoder = &dereferenceDecoder{field.Type.Elem(), binding.Decoder}
+					binding.Decoder = &deferenceDecoder{field.Type.Elem(), binding.Decoder}
 					binding.Decoder = &structFieldDecoder{&field, binding.Decoder}
 					embeddedBindings = append(embeddedBindings, binding)
 				}

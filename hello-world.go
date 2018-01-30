@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/harsh-px/sched-ops/k8s"
+	"github.com/portworx/sched-ops/k8s"
 	"k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
