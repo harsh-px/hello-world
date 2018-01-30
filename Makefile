@@ -45,13 +45,8 @@ all: clean hello-world
 version:
 	@echo $(VERSION)
 
-# print the name of the app
-name:
-	@echo $(APP_NAME)
-
-# print the package path
-package:
-	@echo $(PACKAGE)
+pxclient:
+	go build $(LDFLAGS) -o $(BIN)/pxclient cmd/pxclient/pxclient.go
 
 hello-world:
 	mkdir -p $(BIN)
