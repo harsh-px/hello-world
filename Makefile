@@ -1,4 +1,4 @@
-.PHONY: version all operator run clean container deploy name
+.PHONY: version all pxclient run clean container deploy name
 
 APP_NAME := hello-world
 SHA := $(shell git rev-parse --short HEAD)
@@ -39,7 +39,7 @@ GOFMT := gofmt
 
 .DEFAULT: all
 
-all: clean hello-world
+all: clean hello-world pxclient
 
 # print the version
 version:
