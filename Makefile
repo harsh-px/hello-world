@@ -39,14 +39,11 @@ GOFMT := gofmt
 
 .DEFAULT: all
 
-all: clean hello-world pxclient
+all: clean hello-world
 
 # print the version
 version:
 	@echo $(VERSION)
-
-pxclient:
-	go build $(LDFLAGS) -o $(BIN)/pxclient cmd/pxclient/pxclient.go
 
 hello-world:
 	mkdir -p $(BIN)
