@@ -49,6 +49,11 @@
   name = "k8s.io/client-go"
   version = "kubernetes-1.8.8-beta.0"
 
+[[constraint]]
+  name = "github.com/portworx/sched-ops"
+  source = "https://github.com/harsh-px/sched-ops.git"
+  branch = "dsvalidate"
+
 [prune]
   go-tests = true
   unused-packages = true

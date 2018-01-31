@@ -192,12 +192,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "dsvalidate"
   name = "github.com/portworx/sched-ops"
   packages = [
     "k8s",
     "task"
   ]
-  revision = "eda486b80df9fe78576628755e8db6a8003701dc"
+  revision = "a06d664d3c9df07fa27af899a9e0e7dc1701a2fd"
+  source = "https://github.com/harsh-px/sched-ops.git"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
@@ -420,6 +422,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "231498b2edd82daf790152db0eb0a4438031d9406e800507e8b94a261d5d5d6b"
+  inputs-digest = "82aeece4a1e277c1761a39d9dd18af5363a13f2db37a722a40bd15c19c846a9c"
   solver-name = "gps-cdcl"
   solver-version = 1

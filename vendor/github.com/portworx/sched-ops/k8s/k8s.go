@@ -36,6 +36,8 @@ const (
 	labelUpdateMaxRetries    = 5
 	nodeUpdateTimeout        = 1 * time.Minute
 	nodeUpdateRetryInterval  = 2 * time.Second
+	deploymentReadyTimeout   = 10 * time.Minute
+	daemonsetReadyTimeout    = 20 * time.Minute
 )
 
 var (
@@ -56,6 +58,7 @@ type Ops interface {
 	PersistentVolumeClaimOps
 	SnapshotOps
 	SecretOps
+	ConfigMapOps
 }
 
 // NamespaceOps is an interface to perform namespace operations
@@ -147,6 +150,10 @@ type DeploymentOps interface {
 type DaemonSetOps interface {
 	// GetDaemonSet gets the the daemon set with given name
 	GetDaemonSet(string, string) (*apps_api.DaemonSet, error)
+	// ValidateDaemonSet checks if the given daemonset is ready
+	ValidateDaemonSet(string, string) error
+	// GetDaemonSetPods returns list of pods for the daemonset
+	GetDaemonSetPods(*apps_api.DaemonSet) ([]v1.Pod, error)
 	// UpdateDaemonSet updates the given daemon set
 	UpdateDaemonSet(*apps_api.DaemonSet) error
 }
@@ -156,7 +163,7 @@ type PodOps interface {
 	// GetPods returns pods for the given namespace
 	GetPods(string) (*v1.PodList, error)
 	// GetPodsByOwner returns pods for the given owner and namespace
-	GetPodsByOwner(string, string) ([]v1.Pod, error)
+	GetPodsByOwner(types.UID, string) ([]v1.Pod, error)
 	// GetPodsUsingVolumePluginByNodeName returns all pods who use PVCs provided by the given volume plugin
 	GetPodsUsingVolumePluginByNodeName(nodeName, plugin string) ([]v1.Pod, error)
 	// GetPodByUID returns pod with the given UID, or error if nothing found
@@ -217,6 +224,21 @@ type SnapshotOps interface {
 type SecretOps interface {
 	// GetSecret gets the secrets object given its name and namespace
 	GetSecret(name string, namespace string) (*v1.Secret, error)
+	// CreateSecret creates the given secret
+	CreateSecret(*v1.Secret) (*v1.Secret, error)
+	// UpdateSecret updates the gives secret
+	UpdateSecret(*v1.Secret) (*v1.Secret, error)
+	// UpdateSecretData updates or creates a new secret with the given data
+	UpdateSecretData(string, string, map[string][]byte) (*v1.Secret, error)
+}
+
+type ConfigMapOps interface {
+	// GetConfigMap gets the config map object for the given name and namespace
+	GetConfigMap(name string, namespace string) (*v1.ConfigMap, error)
+	// CreateConfigMap creates a new config map object if it does not already exist.
+	CreateConfigMap(configMap *v1.ConfigMap) (*v1.ConfigMap, error)
+	// UpdateConfigMap updates the given config map object
+	UpdateConfigMap(configMap *v1.ConfigMap) (*v1.ConfigMap, error)
 }
 
 var (
@@ -844,7 +866,7 @@ func (k *k8sOps) ValidateDeployment(deployment *apps_api.Deployment) error {
 		}
 	}
 
-	if _, err := task.DoRetryWithTimeout(t, 10*time.Minute, 10*time.Second); err != nil {
+	if _, err := task.DoRetryWithTimeout(t, deploymentReadyTimeout, 10*time.Second); err != nil {
 		return err
 	}
 	return nil
@@ -901,7 +923,7 @@ func (k *k8sOps) GetDeploymentPods(deployment *apps_api.Deployment) ([]v1.Pod, e
 	for _, rSet := range rSets.Items {
 		for _, owner := range rSet.OwnerReferences {
 			if owner.Name == deployment.Name {
-				return k.GetPodsByOwner(rSet.Name, rSet.Namespace)
+				return k.GetPodsByOwner(rSet.UID, rSet.Namespace)
 			}
 		}
 	}
@@ -927,6 +949,74 @@ func (k *k8sOps) GetDaemonSet(name, namespace string) (*apps_api.DaemonSet, erro
 		return nil, err
 	}
 	return ds, nil
+}
+
+func (k *k8sOps) GetDaemonSetPods(ds *apps_api.DaemonSet) ([]v1.Pod, error) {
+	return k.GetPodsByOwner(ds.UID, ds.Namespace)
+}
+
+func (k *k8sOps) ValidateDaemonSet(name, namespace string) error {
+	t := func() (interface{}, bool, error) {
+		ds, err := k.GetDaemonSet(name, namesp)
+		if err != nil {
+			return "", true, err
+		}
+
+		if ds.Status.NumberUnavailable > 0 {
+			return "", true, &ErrAppNotReady{
+				ID: name,
+				Cause: fmt.Sprintf("%d replicas are not yet available. available replicas: %d",
+					ds.Status.NumberUnavailable, ds.Status.NumberAvailable),
+			}
+		}
+
+		if ds.Status.DesiredNumberScheduled != ds.Status.NumberReady {
+			return "", true, &ErrAppNotReady{
+				ID: name,
+				Cause: fmt.Sprintf("Expected replicas: %v Ready replicas: %v",
+					ds.Status.DesiredNumberScheduled, ds.Status.NumberReady),
+			}
+		}
+
+		pods, err := k.GetDaemonSetPods(ds)
+		if err != nil || pods == nil {
+			return "", true, &ErrAppNotReady{
+				ID:    dep.Name,
+				Cause: fmt.Sprintf("Failed to get pods for daemonset. Err: %v", err),
+			}
+		}
+
+		if len(pods) == 0 {
+			return "", true, &ErrAppNotReady{
+				ID:    dep.Name,
+				Cause: "Application has 0 pods",
+			}
+		}
+
+		var notRunningPods []string
+		var runningCount int32
+		for _, pod := range pods {
+			if !k.IsPodRunning(pod) {
+				notRunningPods = append(notRunningPods, pod.Name)
+			} else {
+				runningCount++
+			}
+		}
+
+		if runningCount >= ds.Status.DesiredNumberScheduled {
+			return "", false, nil
+		}
+
+		return "", true, &ErrAppNotReady{
+			ID:    dep.Name,
+			Cause: fmt.Sprintf("pod(s): %#v not yet ready", notRunningPods),
+		}
+	}
+
+	if _, err := task.DoRetryWithTimeout(t, daemonsetReadyTimeout, 10*time.Second); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (k *k8sOps) UpdateDaemonSet(ds *apps_api.DaemonSet) error {
@@ -1031,7 +1121,7 @@ func (k *k8sOps) ValidateStatefulSet(statefulset *apps_api.StatefulSet) error {
 }
 
 func (k *k8sOps) GetStatefulSetPods(statefulset *apps_api.StatefulSet) ([]v1.Pod, error) {
-	return k.GetPodsByOwner(statefulset.Name, statefulset.Namespace)
+	return k.GetPodsByOwner(statefulset.UID, statefulset.Namespace)
 }
 
 func (k *k8sOps) ValidateTerminatedStatefulSet(statefulset *apps_api.StatefulSet) error {
@@ -1100,7 +1190,7 @@ func (k *k8sOps) GetPods(namespace string) (*v1.PodList, error) {
 	return k.client.CoreV1().Pods(namespace).List(meta_v1.ListOptions{})
 }
 
-func (k *k8sOps) GetPodsByOwner(ownerName string, namespace string) ([]v1.Pod, error) {
+func (k *k8sOps) GetPodsByOwner(ownerUID types.UID, namespace string) ([]v1.Pod, error) {
 	pods, err := k.GetPods(namespace)
 	if err != nil {
 		return nil, err
@@ -1109,7 +1199,7 @@ func (k *k8sOps) GetPodsByOwner(ownerName string, namespace string) ([]v1.Pod, e
 	var result []v1.Pod
 	for _, pod := range pods.Items {
 		for _, owner := range pod.OwnerReferences {
-			if owner.Name == ownerName {
+			if owner.UID == ownerUID {
 				result = append(result, pod)
 			}
 		}
@@ -1508,7 +1598,88 @@ func (k *k8sOps) GetSecret(name string, namespace string) (*v1.Secret, error) {
 	return k.client.CoreV1().Secrets(namespace).Get(name, meta_v1.GetOptions{})
 }
 
+func (k *k8sOps) CreateSecret(secret *v1.Secret) (*v1.Secret, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	return k.client.CoreV1().Secrets(secret.Namespace).Create(secret)
+}
+
+func (k *k8sOps) UpdateSecret(secret *v1.Secret) (*v1.Secret, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	return k.client.CoreV1().Secrets(secret.Namespace).Update(secret)
+}
+
+func (k *k8sOps) UpdateSecretData(name string, ns string, data map[string][]byte) (*v1.Secret, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	secret, err := k.GetSecret(name, ns)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return k.CreateSecret(
+				&v1.Secret{
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      name,
+						Namespace: ns,
+					},
+					Data: data,
+				})
+		}
+		return nil, err
+	}
+
+	// This only adds/updates the key value pairs; does not remove the existing.
+	for k, v := range data {
+		secret.Data[k] = v
+	}
+	return k.UpdateSecret(secret)
+}
+
 // Secret APIs - END
+
+// ConfigMap APIs - BEGIN
+
+func (k *k8sOps) GetConfigMap(name string, namespace string) (*v1.ConfigMap, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	return k.client.CoreV1().ConfigMaps(namespace).Get(name, meta_v1.GetOptions{})
+}
+
+func (k *k8sOps) CreateConfigMap(configMap *v1.ConfigMap) (*v1.ConfigMap, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	ns := configMap.Namespace
+	if len(ns) == 0 {
+		ns = v1.NamespaceDefault
+	}
+
+	return k.client.CoreV1().ConfigMaps(ns).Create(configMap)
+}
+
+func (k *k8sOps) UpdateConfigMap(configMap *v1.ConfigMap) (*v1.ConfigMap, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	ns := configMap.Namespace
+	if len(ns) == 0 {
+		ns = v1.NamespaceDefault
+	}
+
+	return k.client.CoreV1().ConfigMaps(ns).Update(configMap)
+}
+
+// ConfigMap APIs - END
 
 func (k *k8sOps) appsClient() v1beta2.AppsV1beta2Interface {
 	return k.client.AppsV1beta2()
@@ -1615,7 +1786,7 @@ func getLocalIPList(includeHostname bool) ([]string, error) {
 
 // getStorageProvisionerForPVC returns storage provisioner for given PVC if it exists
 func (k *k8sOps) getStorageProvisionerForPVC(pvc *v1.PersistentVolumeClaim) (string, error) {
-	provisionerName, ok := pvc.ObjectMeta.Annotations[pvcStorageProvisionerKey]
+	provisionerName, ok := pvc.Annotations[pvcStorageProvisionerKey]
 	if !ok || len(provisionerName) == 0 {
 		return "", fmt.Errorf("pvc %s does not have a storage provisioner", pvc.Name)
 	}

@@ -25,6 +25,11 @@ func loadClientFromKubeconfig(kubeconfig string) (*kubernetes.Clientset, error) 
 	return client, nil
 }
 
+func demoDS() error {
+	inst := k8s.Instance()
+	return inst.ValidateDaemonSet("portworx", "kube-system")
+}
+
 func demoDrain(node string) error {
 	inst := k8s.Instance()
 	pods, err := inst.GetPodsUsingVolumePluginByNodeName(node, "kubernetes.io/portworx-volume")
@@ -121,14 +126,9 @@ func main() {
 		return
 	}
 
-	if len(node) == 0 {
-		fmt.Printf("error: node is required\n")
-		return
-	}
-
-	err := demoDrain(node)
+	err := demoDS()
 	if err != nil {
-		fmt.Printf("drain demo failed. err: %v\n", err)
+		fmt.Printf("DS demo failed. err: %v\n", err)
 		return
 	}
 
