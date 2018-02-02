@@ -192,13 +192,13 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "dsvalidate"
+  branch = "pxapps"
   name = "github.com/portworx/sched-ops"
   packages = [
     "k8s",
     "task"
   ]
-  revision = "a06d664d3c9df07fa27af899a9e0e7dc1701a2fd"
+  revision = "6691caa2054de21e4d8e9da57e531e4782e53290"
   source = "https://github.com/harsh-px/sched-ops.git"
 
 [[projects]]
@@ -422,6 +422,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "82aeece4a1e277c1761a39d9dd18af5363a13f2db37a722a40bd15c19c846a9c"
+  inputs-digest = "e6ebcc39b84586633f94bec5ae8dc4883722da661c98a50979717c05ee74bb24"
   solver-name = "gps-cdcl"
   solver-version = 1

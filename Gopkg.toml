@@ -52,7 +52,7 @@
 [[constraint]]
   name = "github.com/portworx/sched-ops"
   source = "https://github.com/harsh-px/sched-ops.git"
-  branch = "dsvalidate"
+  branch = "pxapps"
 
 [prune]
   go-tests = true

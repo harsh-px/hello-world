@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/portworx/sched-ops/k8s"
+	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -28,6 +29,32 @@ func loadClientFromKubeconfig(kubeconfig string) (*kubernetes.Clientset, error) 
 func demoDS() error {
 	inst := k8s.Instance()
 	return inst.ValidateDaemonSet("portworx", "kube-system")
+}
+
+func demoPXApps() error {
+	inst := k8s.Instance()
+
+	pods, err := inst.GetPodsUsingVolumePluginByNodeName("k2n2", "kubernetes.io/portworx-volume")
+	if err != nil {
+		return err
+	}
+
+	logrus.Infof("found pods: %v", pods)
+
+	deps, err := inst.GetDeploymentsUsingStorageClass("px-nginx-sc")
+	if err != nil {
+		return err
+	}
+
+	logrus.Infof("found deps: %v", deps)
+
+	ss, err := inst.GetStatefulSetsUsingStorageClass("portworx-repl3")
+	if err != nil {
+		return err
+	}
+
+	logrus.Infof("found ss: %v", ss)
+	return nil
 }
 
 func demoDrain(node string) error {
@@ -126,9 +153,9 @@ func main() {
 		return
 	}
 
-	err := demoDS()
+	err := demoPXApps()
 	if err != nil {
-		fmt.Printf("DS demo failed. err: %v\n", err)
+		fmt.Printf("PXApps demo failed. err: %v\n", err)
 		return
 	}
 
