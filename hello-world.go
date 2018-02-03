@@ -31,9 +31,8 @@ func demoDS() error {
 	return inst.ValidateDaemonSet("portworx", "kube-system")
 }
 
-func demoPXApps() error {
+func demoPXApps(scname, kubeconfig string) error {
 	inst := k8s.Instance()
-
 	pods, err := inst.GetPodsUsingVolumePluginByNodeName("k2n2", "kubernetes.io/portworx-volume")
 	if err != nil {
 		return err
@@ -41,14 +40,30 @@ func demoPXApps() error {
 
 	logrus.Infof("found pods: %v", pods)
 
-	deps, err := inst.GetDeploymentsUsingStorageClass("px-nginx-sc")
+	deps, err := inst.GetDeploymentsUsingStorageClass(scname)
 	if err != nil {
 		return err
 	}
 
+	var depsCopy []
+
 	logrus.Infof("found deps: %v", deps)
 
-	ss, err := inst.GetStatefulSetsUsingStorageClass("portworx-repl3")
+	client, err := loadClientFromKubeconfig(kubeconfig)
+	if err != nil {
+		return err
+	}
+
+	for _, d := range deps {
+		dCopy, err := client.Apps().Deployments(d.Namespace).Get(d.Name, meta_v1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		logrus.Infof("fetched: %v", dCopy)
+	}
+
+	ss, err := inst.GetStatefulSetsUsingStorageClass(scname)
 	if err != nil {
 		return err
 	}
@@ -140,10 +155,12 @@ func demoNs(kubeconfig string) error {
 func main() {
 	var kubeconfig string
 	var node string
+	var scname string
 
 	//flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "- NOT RECOMMENDED FOR PRODUCTION - Path to kubeconfig.")
 	flag.StringVar(&node, "node", "", "")
+	flag.StringVar(&scname, "scname", "", "")
 	flag.Parse()
 
 	if len(kubeconfig) != 0 {
@@ -153,7 +170,7 @@ func main() {
 		return
 	}
 
-	err := demoPXApps()
+	err := demoPXApps(scname, kubeconfig)
 	if err != nil {
 		fmt.Printf("PXApps demo failed. err: %v\n", err)
 		return

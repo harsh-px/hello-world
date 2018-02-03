@@ -412,7 +412,8 @@
     "util/integer"
   ]
   revision = "3a46b5de730a74e064197a157c96c2d29724a677"
-  version = "kubernetes-1.8.8-beta.0"
+  version = "v6.0.0"
+#  version = "kubernetes-1.8.8-beta.0"
 
 [[projects]]
   name = "k8s.io/kube-openapi"
