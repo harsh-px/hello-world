@@ -2,10 +2,10 @@
 
 
 [[projects]]
-  branch = "master"
   name = "github.com/PuerkitoBio/purell"
   packages = ["."]
-  revision = "1c4bec281e4bbc75b4f4a1bd923bdf1bd989a969"
+  revision = "0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -29,10 +29,10 @@
   version = "v2.5.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/emicklei/go-restful-swagger12"
   packages = ["."]
-  revision = "7524189396c68dc4b04d53852f9edc00f816b123"
+  revision = "dcef7f55730566d41eae5db10e7d6981829720f6"
+  version = "1.0.1"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
@@ -53,14 +53,16 @@
   revision = "36d33bfe519efae5632669801b180bf1a245da3b"
 
 [[projects]]
+  branch = "master"
   name = "github.com/go-openapi/spec"
   packages = ["."]
-  revision = "fa03337d7da5735229ee8f5e9d5d0b996014b7f8"
+  revision = "f3499b5df53897321d6f5e9c22cf19309d41d3bc"
 
 [[projects]]
+  branch = "master"
   name = "github.com/go-openapi/swag"
   packages = ["."]
-  revision = "cf0bdb963811675a4d7e74901cefc7411a1df939"
+  revision = "84f4bee7c0a6db40e3166044c7983c1c32125429"
 
 [[projects]]
   name = "github.com/gogo/protobuf"
@@ -68,7 +70,8 @@
     "proto",
     "sortkeys"
   ]
-  revision = "35b81a066e522fb86ece043a8ef1dbfa10b4fed1"
+  revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -85,12 +88,14 @@
     "ptypes/duration",
     "ptypes/timestamp"
   ]
-  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
+  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
+  version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/google/btree"
   packages = ["."]
-  revision = "316fb6d3f031ae8f4d457c6c5186b9e3ded70435"
+  revision = "e89373fe6b4a7413d7acd6da1725b83ef713e6e4"
 
 [[projects]]
   branch = "master"
@@ -105,7 +110,8 @@
     "compiler",
     "extensions"
   ]
-  revision = "49e5b5b1abae70f2aec66a1ae9a1b3d780fef500"
+  revision = "ee43cbb60db7bd22502942cccbc39059117352ab"
+  version = "v0.1.0"
 
 [[projects]]
   branch = "master"
@@ -125,12 +131,14 @@
 [[projects]]
   name = "github.com/imdario/mergo"
   packages = ["."]
-  revision = "52b70e0a0d219897288ffa5675d8ca49fac20f81"
+  revision = "163f41321a19dd09362d4c63cc2489db2015f1f4"
+  version = "0.3.2"
 
 [[projects]]
   name = "github.com/json-iterator/go"
   packages = ["."]
-  revision = "96fcb84835b0447f3de9d7addb313c5487071533"
+  revision = "28452fcdec4e44348d2af0d91d1e9e38da3a9e0a"
+  version = "1.0.5"
 
 [[projects]]
   name = "github.com/juju/ratelimit"
@@ -139,12 +147,13 @@
   version = "1.0.1"
 
 [[projects]]
+  branch = "master"
   name = "github.com/kubernetes-incubator/external-storage"
   packages = [
     "snapshot/pkg/apis/crd/v1",
     "snapshot/pkg/client"
   ]
-  revision = "e1568ce0681e17061f6183cd4f624b0bf46f9fa8"
+  revision = "0c97204ba6ec839db94ec1beff590200eb673d52"
 
 [[projects]]
   branch = "master"
@@ -155,7 +164,7 @@
     "api/client/volume",
     "volume"
   ]
-  revision = "452d1ec0ca378b9f31d9822013b74192a579cef0"
+  revision = "7611cb033cadf5ee28d16c83c8cb7bd13f2e1091"
 
 [[projects]]
   branch = "master"
@@ -180,10 +189,10 @@
   revision = "53be0d36a84c2a886ca057d34b6aa4468df9ccb4"
 
 [[projects]]
-  branch = "master"
   name = "github.com/peterbourgon/diskv"
   packages = ["."]
-  revision = "2973218375c3d13162e1d3afe1708aaee318ef3f"
+  revision = "5f041e8faa004a95c88a202771f4cc3e991971e6"
+  version = "v2.0.1"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -192,14 +201,13 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "pxapps"
+  branch = "master"
   name = "github.com/portworx/sched-ops"
   packages = [
     "k8s",
     "task"
   ]
-  revision = "6691caa2054de21e4d8e9da57e531e4782e53290"
-  source = "https://github.com/harsh-px/sched-ops.git"
+  revision = "5ae06fc2c63b289dac49063afb5fb8c0c9412266"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
@@ -208,10 +216,10 @@
   version = "v1.0.4"
 
 [[projects]]
-  branch = "master"
   name = "github.com/spf13/pflag"
   packages = ["."]
-  revision = "4c012f6dcd9546820e378d0bdda4d8fc772cdfea"
+  revision = "e57e3eeb33f795204c1ca35f56c44f83227c6e66"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/stretchr/testify"
@@ -219,15 +227,17 @@
     "assert",
     "require"
   ]
-  revision = "b91bfb9ebec76498946beb6af7c0230c7cc7ba6c"
-  version = "v1.2.0"
+  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
+  version = "v1.2.1"
 
 [[projects]]
+  branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "d585fd2cc9195196078f516b69daff6744ef5e84"
+  revision = "1875d0a70c90e57f11972aefd42276df65e895b9"
 
 [[projects]]
+  branch = "master"
   name = "golang.org/x/net"
   packages = [
     "http2",
@@ -235,15 +245,16 @@
     "idna",
     "lex/httplex"
   ]
-  revision = "d866cfc389cec985d6fda2859936a575a55a3ab6"
+  revision = "2fb46b16b8dda405028c50f7c7f0f9dd1fa6bfb1"
 
 [[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows"
   ]
-  revision = "d818ba11af4465e00c1998bd3f8a55603b422290"
+  revision = "37707fdb30a5b38865cfb95e5aab41707daec7fd"
 
 [[projects]]
   branch = "master"
@@ -274,11 +285,13 @@
   version = "v0.9.0"
 
 [[projects]]
+  branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "287cf08546ab5e7e37d55a84f7ed3fd1db036de5"
+  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
 
 [[projects]]
+  branch = "release-1.8"
   name = "k8s.io/api"
   packages = [
     "admissionregistration/v1alpha1",
@@ -307,9 +320,9 @@
     "storage/v1beta1"
   ]
   revision = "389dfa299845bcf399c16af89987e8775718ea48"
-  version = "kubernetes-1.8.8-beta.0"
 
 [[projects]]
+  branch = "master"
   name = "k8s.io/apiextensions-apiserver"
   packages = [
     "pkg/apis/apiextensions",
@@ -318,7 +331,7 @@
     "pkg/client/clientset/clientset/scheme",
     "pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
   ]
-  revision = "cc6478d1f0cc11882137b67e8137d387e68ce63a"
+  revision = "ed43f04e5359fe96ddec30cceeb7053be9300bd1"
 
 [[projects]]
   branch = "release-1.8"
@@ -411,18 +424,18 @@
     "util/homedir",
     "util/integer"
   ]
-  revision = "3a46b5de730a74e064197a157c96c2d29724a677"
-  version = "v6.0.0"
-#  version = "kubernetes-1.8.8-beta.0"
+  revision = "2ae454230481a7cb5544325e12ad7658ecccd19b"
+  version = "v5.0.1"
 
 [[projects]]
+  branch = "master"
   name = "k8s.io/kube-openapi"
   packages = ["pkg/common"]
-  revision = "b16ebc07f5cad97831f961e4b5a9cc1caed33b7e"
+  revision = "275e2ce91dec4c05a4094a7b1daee5560b555ac9"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e6ebcc39b84586633f94bec5ae8dc4883722da661c98a50979717c05ee74bb24"
+  inputs-digest = "e3e83aa280db49fe92bfd9c296fbeab7a145aa01eed1514064cc4b42caae0aa4"
   solver-name = "gps-cdcl"
   solver-version = 1

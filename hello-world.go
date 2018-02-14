@@ -28,24 +28,22 @@ func loadClientFromKubeconfig(kubeconfig string) (*kubernetes.Clientset, error) 
 
 func demoDS() error {
 	inst := k8s.Instance()
-	return inst.ValidateDaemonSet("portworx", "kube-system")
+	return inst.ValidateDaemonSet("portworx", "kube-system", 5*time.Minute)
 }
 
 func demoPXApps(scname, kubeconfig string) error {
 	inst := k8s.Instance()
-	pods, err := inst.GetPodsUsingVolumePluginByNodeName("k2n2", "kubernetes.io/portworx-volume")
+	/*pods, err := inst.GetPodsUsingVolumePluginByNodeName("k2n2", "kubernetes.io/portworx-volume")
 	if err != nil {
 		return err
 	}
 
-	logrus.Infof("found pods: %v", pods)
+	logrus.Infof("found pods: %v", pods)*/
 
 	deps, err := inst.GetDeploymentsUsingStorageClass(scname)
 	if err != nil {
 		return err
 	}
-
-	var depsCopy []
 
 	logrus.Infof("found deps: %v", deps)
 
@@ -118,6 +116,18 @@ func demoDrain(node string) error {
 	return nil
 }
 
+func demoPVC(scname string) error {
+	inst := k8s.Instance()
+
+	pvcs, err := inst.GetPVCsUsingStorageClass(scname)
+	if err != nil {
+		return err
+	}
+
+	logrus.Infof("got pvcs: %v", pvcs)
+	return nil
+}
+
 func demoNs(kubeconfig string) error {
 	client, err := loadClientFromKubeconfig(kubeconfig)
 	if err != nil {
@@ -170,16 +180,11 @@ func main() {
 		return
 	}
 
-	err := demoPXApps(scname, kubeconfig)
+	err := demoPVC(scname)
 	if err != nil {
-		fmt.Printf("PXApps demo failed. err: %v\n", err)
+		fmt.Printf("PVC demo failed. err: %v\n", err)
 		return
 	}
-
-	/*err := demoNs(kubeconfig)
-	if err != nil {
-		fmt.Printf("namespace demo failed. err: %v\n", err)
-	}*/
 
 	return
 }

@@ -15,7 +15,9 @@ import (
 	"github.com/portworx/sched-ops/task"
 	"github.com/sirupsen/logrus"
 	apps_api "k8s.io/api/apps/v1beta2"
+	batch_v1 "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
+	rbac_v1 "k8s.io/api/rbac/v1"
 	storage_api "k8s.io/api/storage/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -37,8 +39,9 @@ const (
 	nodeUpdateTimeout        = 1 * time.Minute
 	nodeUpdateRetryInterval  = 2 * time.Second
 	deploymentReadyTimeout   = 10 * time.Minute
-	daemonsetReadyTimeout    = 20 * time.Minute
 )
+
+var deleteForegroundPolicy = meta_v1.DeletePropagationForeground
 
 var (
 	// ErrPodsNotFound error returned when pod or pods could not be found
@@ -52,7 +55,9 @@ type Ops interface {
 	ServiceOps
 	StatefulSetOps
 	DeploymentOps
+	JobOps
 	DaemonSetOps
+	RBACOps
 	PodOps
 	StorageClassOps
 	PersistentVolumeClaimOps
@@ -152,14 +157,51 @@ type DeploymentOps interface {
 
 // DaemonSetOps is an interface to perform k8s daemon set operations
 type DaemonSetOps interface {
+	// CreateDaemonSet creates the given daemonset
+	CreateDaemonSet(ds *apps_api.DaemonSet) (*apps_api.DaemonSet, error)
+	// ListDaemonSets lists all daemonsets in given namespace
+	ListDaemonSets(namespace string, listOpts meta_v1.ListOptions) ([]apps_api.DaemonSet, error)
 	// GetDaemonSet gets the the daemon set with given name
 	GetDaemonSet(string, string) (*apps_api.DaemonSet, error)
-	// ValidateDaemonSet checks if the given daemonset is ready
-	ValidateDaemonSet(string, string) error
+	// ValidateDaemonSet checks if the given daemonset is ready within given timeout
+	ValidateDaemonSet(name, namespace string, timeout time.Duration) error
 	// GetDaemonSetPods returns list of pods for the daemonset
 	GetDaemonSetPods(*apps_api.DaemonSet) ([]v1.Pod, error)
-	// UpdateDaemonSet updates the given daemon set
-	UpdateDaemonSet(*apps_api.DaemonSet) error
+	// UpdateDaemonSet updates the given daemon set and returns the updated ds
+	UpdateDaemonSet(*apps_api.DaemonSet) (*apps_api.DaemonSet, error)
+	// DeleteDaemonSet deletes the given daemonset
+	DeleteDaemonSet(name, namespace string) error
+}
+
+// JobOps is an interface to perform job operations
+type JobOps interface {
+	// CreateJob creates the given job
+	CreateJob(job *batch_v1.Job) (*batch_v1.Job, error)
+	// GetJob returns the job from given namespace and name
+	GetJob(name, namespace string) (*batch_v1.Job, error)
+	// DeleteJob deletes the job with given namespace and name
+	DeleteJob(name, namespace string) error
+	// ValidateJob validates if the job with given namespace and name succeeds.
+	//     It waits for timeout duration for job to succeed
+	ValidateJob(name, namespace string, timeout time.Duration) error
+}
+
+// RBACOps is an interface to perform RBAC operations
+type RBACOps interface {
+	// CreateClusterRole creates the given cluster role
+	CreateClusterRole(role *rbac_v1.ClusterRole) (*rbac_v1.ClusterRole, error)
+	// UpdateClusterRole updates the given cluster role
+	UpdateClusterRole(role *rbac_v1.ClusterRole) (*rbac_v1.ClusterRole, error)
+	// CreateClusterRoleBinding creates the given cluster role binding
+	CreateClusterRoleBinding(role *rbac_v1.ClusterRoleBinding) (*rbac_v1.ClusterRoleBinding, error)
+	// CreateServiceAccount creates the given service account
+	CreateServiceAccount(account *v1.ServiceAccount) (*v1.ServiceAccount, error)
+	// DeleteClusterRole deletes the given cluster role
+	DeleteClusterRole(roleName string) error
+	// DeleteClusterRoleBinding deletes the given cluster role binding
+	DeleteClusterRoleBinding(roleName string) error
+	// DeleteServiceAccount deletes the given service account
+	DeleteServiceAccount(accountName, namespace string) error
 }
 
 // PodOps is an interface to perform k8s pod operations
@@ -176,6 +218,8 @@ type PodOps interface {
 	DeletePods([]v1.Pod) error
 	// IsPodRunning checks if all containers in a pod are in running state
 	IsPodRunning(v1.Pod) bool
+	// IsPodReady checks if all containers in a pod are ready (passed readiness probe)
+	IsPodReady(v1.Pod) bool
 	// IsPodBeingManaged returns true if the pod is being managed by a controller
 	IsPodBeingManaged(v1.Pod) bool
 	// WaitForPodDeletion waits for given timeout for given pod to be deleted
@@ -210,6 +254,8 @@ type PersistentVolumeClaimOps interface {
 	GetPersistentVolumeClaimParams(*v1.PersistentVolumeClaim) (map[string]string, error)
 	// GetPersistentVolumeClaimStatus returns the status of the given pvc
 	GetPersistentVolumeClaimStatus(*v1.PersistentVolumeClaim) (*v1.PersistentVolumeClaimStatus, error)
+	// GetPVCsUsingStorageClass returns all PVCs that use the given storage class
+	GetPVCsUsingStorageClass(scName string) ([]v1.PersistentVolumeClaim, error)
 }
 
 type SnapshotOps interface {
@@ -690,9 +736,8 @@ func (k *k8sOps) DeleteService(service *v1.Service) error {
 		return err
 	}
 
-	policy := meta_v1.DeletePropagationForeground
 	return k.client.CoreV1().Services(service.Namespace).Delete(service.Name, &meta_v1.DeleteOptions{
-		PropagationPolicy: &policy,
+		PropagationPolicy: &deleteForegroundPolicy,
 	})
 }
 
@@ -762,9 +807,8 @@ func (k *k8sOps) DeleteDeployment(deployment *apps_api.Deployment) error {
 		return err
 	}
 
-	policy := meta_v1.DeletePropagationForeground
 	return k.appsClient().Deployments(deployment.Namespace).Delete(deployment.Name, &meta_v1.DeleteOptions{
-		PropagationPolicy: &policy,
+		PropagationPolicy: &deleteForegroundPolicy,
 	})
 }
 
@@ -849,24 +893,24 @@ func (k *k8sOps) ValidateDeployment(deployment *apps_api.Deployment) error {
 			}
 		}
 
-		// look for "requiredReplicas" number of pods in running state
-		var notRunningPods []string
-		var runningCount int32
+		// look for "requiredReplicas" number of pods in ready state
+		var notReadyPods []string
+		var readyCount int32
 		for _, pod := range pods {
-			if !k.IsPodRunning(pod) {
-				notRunningPods = append(notRunningPods, pod.Name)
+			if !k.IsPodReady(pod) {
+				notReadyPods = append(notReadyPods, pod.Name)
 			} else {
-				runningCount++
+				readyCount++
 			}
 		}
 
-		if runningCount >= requiredReplicas {
+		if readyCount == requiredReplicas {
 			return "", false, nil
 		}
 
 		return "", true, &ErrAppNotReady{
 			ID:    dep.Name,
-			Cause: fmt.Sprintf("pod(s): %#v not yet ready", notRunningPods),
+			Cause: fmt.Sprintf("pod(s): %#v not yet ready", notReadyPods),
 		}
 	}
 
@@ -972,6 +1016,27 @@ func (k *k8sOps) GetDeploymentsUsingStorageClass(scName string) ([]apps_api.Depl
 
 // DaemonSet APIs - BEGIN
 
+func (k *k8sOps) CreateDaemonSet(ds *apps_api.DaemonSet) (*apps_api.DaemonSet, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	return k.client.Apps().DaemonSets(ds.Namespace).Create(ds)
+}
+
+func (k *k8sOps) ListDaemonSets(namespace string, listOpts meta_v1.ListOptions) ([]apps_api.DaemonSet, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	dsList, err := k.client.Apps().DaemonSets(namespace).List(listOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	return dsList.Items, nil
+}
+
 func (k *k8sOps) GetDaemonSet(name, namespace string) (*apps_api.DaemonSet, error) {
 	if err := k.initK8sClient(); err != nil {
 		return nil, err
@@ -992,25 +1057,34 @@ func (k *k8sOps) GetDaemonSetPods(ds *apps_api.DaemonSet) ([]v1.Pod, error) {
 	return k.GetPodsByOwner(ds.UID, ds.Namespace)
 }
 
-func (k *k8sOps) ValidateDaemonSet(name, namespace string) error {
+func (k *k8sOps) ValidateDaemonSet(name, namespace string, timeout time.Duration) error {
 	t := func() (interface{}, bool, error) {
 		ds, err := k.GetDaemonSet(name, namespace)
 		if err != nil {
 			return "", true, err
 		}
 
+		if ds.Status.DesiredNumberScheduled != ds.Status.UpdatedNumberScheduled {
+			return "", true, &ErrAppNotReady{
+				ID: name,
+				Cause: fmt.Sprintf("Not all pods are updated. expected: %v updated: %v",
+					ds.Status.DesiredNumberScheduled, ds.Status.UpdatedNumberScheduled),
+			}
+		}
+
 		if ds.Status.NumberUnavailable > 0 {
 			return "", true, &ErrAppNotReady{
 				ID: name,
-				Cause: fmt.Sprintf("%d replicas are not yet available. available replicas: %d",
-					ds.Status.NumberUnavailable, ds.Status.NumberAvailable),
+				Cause: fmt.Sprintf("%d pods are not available. available: %d ready: %d updated: %d",
+					ds.Status.NumberUnavailable, ds.Status.NumberAvailable,
+					ds.Status.NumberReady, ds.Status.UpdatedNumberScheduled),
 			}
 		}
 
 		if ds.Status.DesiredNumberScheduled != ds.Status.NumberReady {
 			return "", true, &ErrAppNotReady{
 				ID: name,
-				Cause: fmt.Sprintf("Expected replicas: %v Ready replicas: %v",
+				Cause: fmt.Sprintf("expected ready: %v actual ready: %v",
 					ds.Status.DesiredNumberScheduled, ds.Status.NumberReady),
 			}
 		}
@@ -1030,44 +1104,110 @@ func (k *k8sOps) ValidateDaemonSet(name, namespace string) error {
 			}
 		}
 
-		var notRunningPods []string
-		var runningCount int32
+		var notReadyPods []string
+		var readyCount int32
 		for _, pod := range pods {
-			if !k.IsPodRunning(pod) {
-				notRunningPods = append(notRunningPods, pod.Name)
+			if !k.IsPodReady(pod) {
+				notReadyPods = append(notReadyPods, pod.Name)
 			} else {
-				runningCount++
+				readyCount++
 			}
 		}
 
-		if runningCount >= ds.Status.DesiredNumberScheduled {
+		if readyCount == ds.Status.DesiredNumberScheduled {
 			return "", false, nil
 		}
 
 		return "", true, &ErrAppNotReady{
 			ID:    ds.Name,
-			Cause: fmt.Sprintf("pod(s): %#v not yet ready", notRunningPods),
+			Cause: fmt.Sprintf("pod(s): %#v not yet ready", notReadyPods),
 		}
 	}
 
-	if _, err := task.DoRetryWithTimeout(t, daemonsetReadyTimeout, 10*time.Second); err != nil {
+	if _, err := task.DoRetryWithTimeout(t, timeout, 10*time.Second); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (k *k8sOps) UpdateDaemonSet(ds *apps_api.DaemonSet) error {
+func (k *k8sOps) UpdateDaemonSet(ds *apps_api.DaemonSet) (*apps_api.DaemonSet, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	return k.appsClient().DaemonSets(ds.Namespace).Update(ds)
+}
+
+func (k *k8sOps) DeleteDaemonSet(name, namespace string) error {
 	if err := k.initK8sClient(); err != nil {
 		return err
 	}
 
-	if _, err := k.appsClient().DaemonSets(ds.Namespace).Update(ds); err != nil {
-		return err
-	}
-	return nil
+	policy := meta_v1.DeletePropagationForeground
+	return k.client.Apps().DaemonSets(namespace).Delete(
+		name,
+		&meta_v1.DeleteOptions{PropagationPolicy: &policy})
 }
 
 // DaemonSet APIs - END
+
+// Job APIs - BEGIN
+func (k *k8sOps) CreateJob(job *batch_v1.Job) (*batch_v1.Job, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	return k.client.Batch().Jobs(job.Namespace).Create(job)
+}
+
+func (k *k8sOps) GetJob(name, namespace string) (*batch_v1.Job, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	return k.client.Batch().Jobs(namespace).Get(name, meta_v1.GetOptions{})
+}
+
+func (k *k8sOps) DeleteJob(name, namespace string) error {
+	if err := k.initK8sClient(); err != nil {
+		return err
+	}
+
+	return k.client.Batch().Jobs(namespace).Delete(name, &meta_v1.DeleteOptions{
+		PropagationPolicy: &deleteForegroundPolicy,
+	})
+}
+
+func (k *k8sOps) ValidateJob(name, namespace string, timeout time.Duration) error {
+	t := func() (interface{}, bool, error) {
+		job, err := k.GetJob(name, namespace)
+		if err != nil {
+			return nil, true, err
+		}
+
+		if job.Status.Failed > 0 {
+			return nil, false, fmt.Errorf("job: [%s] %s has %d failed pod(s)", namespace, name, job.Status.Failed)
+		}
+
+		if job.Status.Active > 0 {
+			return nil, true, fmt.Errorf("job: [%s] %s still has %d active pod(s)", namespace, name, job.Status.Active)
+		}
+
+		if job.Status.Succeeded == 0 {
+			return nil, true, fmt.Errorf("job: [%s] %s no pod(s) that have succeeded", namespace, name)
+		}
+
+		return nil, false, nil
+	}
+
+	if _, err := task.DoRetryWithTimeout(t, timeout, 10*time.Second); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Job APIs - END
 
 // StatefulSet APIs - BEGIN
 
@@ -1089,9 +1229,8 @@ func (k *k8sOps) DeleteStatefulSet(statefulset *apps_api.StatefulSet) error {
 		return err
 	}
 
-	policy := meta_v1.DeletePropagationForeground
 	return k.appsClient().StatefulSets(statefulset.Namespace).Delete(statefulset.Name, &meta_v1.DeleteOptions{
-		PropagationPolicy: &policy,
+		PropagationPolicy: &deleteForegroundPolicy,
 	})
 }
 
@@ -1140,7 +1279,7 @@ func (k *k8sOps) ValidateStatefulSet(statefulset *apps_api.StatefulSet) error {
 		}
 
 		for _, pod := range pods {
-			if !k.IsPodRunning(pod) {
+			if !k.IsPodReady(pod) {
 				return "", true, &ErrAppNotReady{
 					ID:    sset.Name,
 					Cause: fmt.Sprintf("pod: %v is not yet ready", pod.Name),
@@ -1230,15 +1369,76 @@ func (k *k8sOps) GetStatefulSetsUsingStorageClass(scName string) ([]apps_api.Sta
 
 // StatefulSet APIs - END
 
+func (k *k8sOps) CreateClusterRole(role *rbac_v1.ClusterRole) (*rbac_v1.ClusterRole, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	return k.client.Rbac().ClusterRoles().Create(role)
+}
+
+func (k *k8sOps) UpdateClusterRole(role *rbac_v1.ClusterRole) (*rbac_v1.ClusterRole, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	return k.client.Rbac().ClusterRoles().Update(role)
+}
+
+func (k *k8sOps) CreateClusterRoleBinding(binding *rbac_v1.ClusterRoleBinding) (*rbac_v1.ClusterRoleBinding, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	return k.client.Rbac().ClusterRoleBindings().Create(binding)
+}
+
+func (k *k8sOps) CreateServiceAccount(account *v1.ServiceAccount) (*v1.ServiceAccount, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	return k.client.Core().ServiceAccounts(account.Namespace).Create(account)
+}
+
+func (k *k8sOps) DeleteClusterRole(roleName string) error {
+	if err := k.initK8sClient(); err != nil {
+		return err
+	}
+
+	return k.client.Rbac().ClusterRoles().Delete(roleName, &meta_v1.DeleteOptions{
+		PropagationPolicy: &deleteForegroundPolicy,
+	})
+}
+
+func (k *k8sOps) DeleteClusterRoleBinding(bindingName string) error {
+	if err := k.initK8sClient(); err != nil {
+		return err
+	}
+
+	return k.client.Rbac().ClusterRoleBindings().Delete(bindingName, &meta_v1.DeleteOptions{
+		PropagationPolicy: &deleteForegroundPolicy,
+	})
+}
+
+func (k *k8sOps) DeleteServiceAccount(accountName, namespace string) error {
+	if err := k.initK8sClient(); err != nil {
+		return err
+	}
+
+	return k.client.Core().ServiceAccounts(namespace).Delete(accountName, &meta_v1.DeleteOptions{
+		PropagationPolicy: &deleteForegroundPolicy,
+	})
+}
+
 func (k *k8sOps) DeletePods(pods []v1.Pod) error {
 	if err := k.initK8sClient(); err != nil {
 		return err
 	}
 
-	deletePolicy := meta_v1.DeletePropagationForeground
 	for _, pod := range pods {
 		if err := k.client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &meta_v1.DeleteOptions{
-			PropagationPolicy: &deletePolicy,
+			PropagationPolicy: &deleteForegroundPolicy,
 		}); err != nil {
 			return err
 		}
@@ -1327,6 +1527,27 @@ func (k *k8sOps) IsPodRunning(pod v1.Pod) bool {
 
 	for _, c := range pod.Status.ContainerStatuses {
 		if c.State.Running == nil {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (k *k8sOps) IsPodReady(pod v1.Pod) bool {
+	// If init containers are running, return false since the actual container would not have started yet
+	for _, c := range pod.Status.InitContainerStatuses {
+		if c.State.Running != nil {
+			return false
+		}
+	}
+
+	for _, c := range pod.Status.ContainerStatuses {
+		if c.State.Running == nil {
+			return false
+		}
+
+		if !c.Ready {
 			return false
 		}
 	}
@@ -1520,6 +1741,27 @@ func (k *k8sOps) GetPersistentVolumeClaimParams(pvc *v1.PersistentVolumeClaim) (
 	}
 
 	return params, nil
+}
+
+func (k *k8sOps) GetPVCsUsingStorageClass(scName string) ([]v1.PersistentVolumeClaim, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+
+	var retList []v1.PersistentVolumeClaim
+	pvcs, err := k.client.Core().PersistentVolumeClaims("").List(meta_v1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pvc := range pvcs.Items {
+		sc, err := k.getStorageClassForPVC(&pvc)
+		if err == nil && sc.Name == scName {
+			retList = append(retList, pvc)
+		}
+	}
+
+	return retList, nil
 }
 
 // isPVCShared returns true if the PersistentVolumeClaim has been configured for use by multiple clients
