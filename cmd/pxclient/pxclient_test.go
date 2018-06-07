@@ -1,7 +1,7 @@
 package pxclient
 
 import (
-	"flag"
+	"fmt"
 	"testing"
 
 	"github.com/libopenstorage/openstorage/api"
@@ -14,7 +14,18 @@ const (
 	cloneName = "testclone"
 )
 
-var pxhost = flag.String("pxhost", "localhost", "The address on which PX server is running")
+var pxhost = "192.168.56.82"
+
+func TestVersion(t *testing.T) {
+	require.NotEmpty(t, *pxhost, "pxhost not given")
+
+	fmt.Printf("pxhost: %s\n", *pxhost)
+	drv, err := getVolDriver(*pxhost)
+	require.NoError(t, err, "failed to get vol driver")
+
+	status := drv.Status()
+	fmt.Printf("driver status: %v\n", status)
+}
 
 func TestVolCreate(t *testing.T) {
 	require.NotEmpty(t, *pxhost, "pxhost not given")

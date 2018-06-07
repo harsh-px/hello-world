@@ -26,29 +26,36 @@
 
 
 [[constraint]]
+  name = "github.com/fsouza/go-dockerclient"
+  version = "1.2.0"
+
+[[constraint]]
+  name = "github.com/libopenstorage/openstorage"
+  version = "2.0.0"
+
+[[constraint]]
   branch = "master"
-  name = "github.com/golang/glog"
+  name = "github.com/portworx/sched-ops"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
-  version = "1.0.4"
+  version = "1.0.5"
 
 [[constraint]]
-  name = "k8s.io/apimachinery"
+  name = "github.com/stretchr/testify"
+  version = "1.2.1"
+
+[[constraint]]
   branch = "release-1.8"
-
-[[constraint]]
   name = "k8s.io/api"
+
+[[constraint]]
   branch = "release-1.8"
+  name = "k8s.io/apimachinery"
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "v5.0.0"
-
-[[constraint]]
-  name = "github.com/portworx/sched-ops"
-  branch = "master"
-#  source = "github.com/harsh-px/sched-ops"
+  version = "5.0.1"
 
 [prune]
   go-tests = true

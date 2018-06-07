@@ -1,0 +1,6 @@
+FROM golang:1.9.3
+MAINTAINER harsh@portworx.com
+
+RUN mkdir -p /go/src/github.com/harsh-px/hello-world
+
+WORKDIR /go/src/github.com/harsh-px/hello-world

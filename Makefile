@@ -28,7 +28,8 @@ GO=go
 # Sources and Targets
 EXECUTABLES :=$(APP_NAME)
 # Build Binaries setting main.version and main.build vars
-LDFLAGS :=-ldflags " -extldflags '-z relro -z now'"
+LDFLAGS += -extldflags -static
+BUILD_OPTIONS += -v -a -ldflags "$(LDFLAGS)"
 PKGS=$(shell go list ./... | grep -v vendor)
 GOVET_PKGS=$(shell  go list ./... | grep -v vendor )
 
@@ -46,8 +47,20 @@ version:
 	@echo $(VERSION)
 
 hello-world:
+	#@mkdir -p $(BIN)
+	go build $(BUILD_OPTIONS)  -o $(BIN)/$(APP_NAME) hello-world.go
+
+pxclient:
 	mkdir -p $(BIN)
-	go build $(LDFLAGS) -o $(BIN)/$(APP_NAME) hello-world.go
+	go build $(BUILD_OPTIONS)  -o $(BIN)/pxclient cmd/pxclient/pxclient.go
+
+docker-build:
+	docker build -t px/docker-build -f Dockerfile.build .
+	@echo "Building using docker"
+	docker run \
+                --privileged \
+                -v $(shell pwd):/go/src/github.com/harsh-px/hello-world \
+                px/docker-build make hello-world
 
 
 clean:
