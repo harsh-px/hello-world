@@ -2,17 +2,10 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"time"
 
-	"github.com/kubernetes/kubernetes/pkg/kubectl/cmd"
-	"github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/remotecommand"
 )
 
 func initK8sClient() (*kubernetes.Clientset, error) {
@@ -40,14 +33,7 @@ func initK8sClient() (*kubernetes.Clientset, error) {
 	return client, nil
 }
 
-func PrintPodLogs(podName, podNamespace string) error {
-	client, err := initK8sClient()
-	if err != nil {
-		return err
-	}
-}
-
-func RunCommandInPod(cmds []string, podName, containerName, namespace string, stdout, stderr io.Writer, in io.Reader) (string, error) {
+/*func RunCommandInPod(cmds []string, podName, containerName, namespace string, stdout, stderr io.Writer, in io.Reader) (string, error) {
 	client, err := initK8sClient()
 	if err != nil {
 		return "", err
@@ -111,30 +97,30 @@ func RunCommandInPod(cmds []string, podName, containerName, namespace string, st
 	}
 
 	return "", fn()
-}
+}*/
 
 //func demoRunPodCmds(podname, podnamespace string, cmds []string, in *bufio.Reader) (string, error) {
-func demoRunPodCmds(podname, podnamespace string, cmds []string, stdout, stderr io.Writer, stdin io.Reader) (string, error) {
-	fmt.Printf("[debug] foo...\n")
-	/*input, err := in.ReadString('\n')
-	if err != nil {
-		return "", err
-	}
+/*func demoRunPodCmds(podname, podnamespace string, cmds []string, stdout, stderr io.Writer, stdin io.Reader) (string, error) {
+fmt.Printf("[debug] foo...\n")
+/*input, err := in.ReadString('\n')
+if err != nil {
+	return "", err
+}
 
-	fmt.Printf("input: %s\n", input)*/
-	output, err := RunCommandInPod(cmds, podname, "", podnamespace, stdout, stderr, stdin)
+fmt.Printf("input: %s\n", input)*/
+/*output, err := RunCommandInPod(cmds, podname, "", podnamespace, stdout, stderr, stdin)
 	if err != nil {
 		return "", err
 	}
 
 	return output, nil
-}
+}*/
 
 func main() {
 	/*var kubeconfig string
 	var node string
 	var scname string*/
-	var podname string
+	//var podname string
 
 	//flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	/*flag.StringVar(&kubeconfig, "kubeconfig", "", "- NOT RECOMMENDED FOR PRODUCTION - Path to kubeconfig.")
@@ -143,10 +129,10 @@ func main() {
 	flag.StringVar(&podname, "podname", "", "")
 	flag.Parse()*/
 
-	podname = "mysql-5499d4cd95-7c4s5"
+	//podname = "mysql-5499d4cd95-7c4s5"
 
-	var output string
-	var err error
+	//var output string
+	//var err error
 	/*info, _ := os.Stdin.Stat()
 	if (info.Mode() & os.ModeCharDevice) == os.ModeCharDevice {
 		fmt.Println("The command is intended to work with pipes.")
@@ -155,12 +141,4 @@ func main() {
 	} else if info.Size() > 0 {*/
 	//fmt.Printf("using pipe mode...\n")
 	//reader := bufio.NewReader(os.Stdin)
-	output, err = demoRunPodCmds(podname, "default", []string{"bash"}, os.Stdout, os.Stderr, os.Stdin)
-	if err != nil {
-		logrus.Fatalf("failed with : %v", err)
-	}
-	//	}
-
-	fmt.Printf("stdout: %s\n", output)
-	time.Sleep(5 * time.Second)
 }
