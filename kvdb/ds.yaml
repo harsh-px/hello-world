@@ -1,0 +1,53 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: px-kvdb-utility
+  namespace: kube-system
+spec:
+  minReadySeconds: 0
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        name: px-kvdb-utility
+    spec:
+      hostNetwork: true
+      hostPID: false
+      containers:
+        - name: px-kvdb-utility
+          image: harshpx/px-kvdb-utility:2.0
+          imagePullPolicy: Always
+          command:
+            ["/px-kvdb-utility",
+            "put",
+            "--kvdb-urls",
+            "https://d9c03996-cad2-4ada-9c2a-1f063818c7dd.etcd.pks-infrastructure.etcd.bosh:2379,https://f5cea536-eec3-4ac8-988a-922e145ca5bd.etcd.pks-infrastructure.etcd.bosh:2379,https://72a978f9-b5d1-4c85-885b-cb55fe2652ae.etcd.pks-infrastructure.etcd.bosh:2379",
+            "--cacert", "/etcdcerts/etcd-ca.crt",
+            "--cert","/etcdcerts/etcd.crt",
+            "--key", "/etcdcerts/etcd.key"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: diagsdump
+              mountPath: /var/cores
+            - name: etcdcerts
+              mountPath: /etcdcerts
+      restartPolicy: Always
+      serviceAccountName: px-account
+      volumes:
+        - name: diagsdump
+          hostPath:
+            path: /var/cores
+        - name: etcdcerts
+          secret:
+            secretName: px-etcd-certs
+            items:
+            - key: etcd-ca.crt
+              path: etcd-ca.crt
+            - key: etcd.crt
+              path: etcd.crt
+            - key: etcd.key
+              path: etcd.key

@@ -2,13 +2,22 @@ package main
 
 import (
 	"fmt"
-	"os"
-
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
+	"time"
 )
 
-func initK8sClient() (*kubernetes.Clientset, error) {
+// pod is a simple type to encapsulate a pod's uid and namespace
+type Pod struct {
+	Uid       string `json:"uid"`
+	Namespace string `json:"namespace"`
+}
+
+// commandTask tracks pods where commands for a taskID might still be running
+type CommandTask struct {
+	TaskID string `json:"task_id"`
+	Pods   []Pod  `json:"pods"`
+}
+
+/*func initK8sClient() (*kubernetes.Clientset, error) {
 	kubeconfig := os.Getenv("KUBECONFIG")
 	if len(kubeconfig) == 0 {
 		return nil, fmt.Errorf("kubeconfig is not set")
@@ -31,89 +40,6 @@ func initK8sClient() (*kubernetes.Clientset, error) {
 	}
 
 	return client, nil
-}
-
-/*func RunCommandInPod(cmds []string, podName, containerName, namespace string, stdout, stderr io.Writer, in io.Reader) (string, error) {
-	client, err := initK8sClient()
-	if err != nil {
-		return "", err
-	}
-
-	pod, err := client.Core().Pods(namespace).Get(podName, meta_v1.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-
-	if len(containerName) == 0 {
-		if len(pod.Spec.Containers) != 1 {
-			return "", fmt.Errorf("could not determine which container to use")
-		}
-
-		containerName = pod.Spec.Containers[0].Name
-	}
-
-	req := client.Core().RESTClient().Post().
-		Resource("pods").
-		Name(podName).
-		Namespace(namespace).
-		SubResource("exec").
-		Param("container", containerName)
-
-	req.VersionedParams(&v1.PodExecOptions{
-		Container: containerName,
-		Command:   cmds,
-		Stdin:     true,
-		Stdout:    true,
-		Stderr:    true,
-		TTY:       true,
-	}, scheme.ParameterCodec)
-
-	execOpts := &cmd.ExecOptions{
-		StreamOptions: cmd.StreamOptions{
-			In:  in,
-			Out: stdout,
-			Err: stderr,
-		},
-		Executor: &cmd.DefaultRemoteExecutor{},
-	}
-
-	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
-	if err != nil {
-		return "", fmt.Errorf("failed to init executor: %v", err)
-	}
-
-	fn := func() error {
-		err = exec.Stream(remotecommand.StreamOptions{
-			Stdin:  in,
-			Stdout: stdout,
-			Stderr: stderr,
-			Tty:    true,
-		})
-		if err != nil {
-			return fmt.Errorf("could not execute: %v", err)
-		}
-
-		return nil
-	}
-
-	return "", fn()
-}*/
-
-//func demoRunPodCmds(podname, podnamespace string, cmds []string, in *bufio.Reader) (string, error) {
-/*func demoRunPodCmds(podname, podnamespace string, cmds []string, stdout, stderr io.Writer, stdin io.Reader) (string, error) {
-fmt.Printf("[debug] foo...\n")
-/*input, err := in.ReadString('\n')
-if err != nil {
-	return "", err
-}
-
-fmt.Printf("input: %s\n", input)*/
-/*output, err := RunCommandInPod(cmds, podname, "", podnamespace, stdout, stderr, stdin)
-	if err != nil {
-		return "", err
-	}
-
-	return output, nil
 }*/
 
 func main() {
@@ -122,23 +48,19 @@ func main() {
 	var scname string*/
 	//var podname string
 
-	//flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	/*flag.StringVar(&kubeconfig, "kubeconfig", "", "- NOT RECOMMENDED FOR PRODUCTION - Path to kubeconfig.")
-	flag.StringVar(&node, "node", "", "")
-	flag.StringVar(&scname, "scname", "", "")
-	flag.StringVar(&podname, "podname", "", "")
-	flag.Parse()*/
+	//flag.StringVar(&kubeconfig, "kubeconfig", "", "- NOT RECOMMENDED FOR PRODUCTION - Path to kubeconfig.")
+	//flag.StringVar(&node, "node", "", "")
+	//flag.StringVar(&scname, "scname", "", "")
 
-	//podname = "mysql-5499d4cd95-7c4s5"
-
-	//var output string
-	//var err error
-	/*info, _ := os.Stdin.Stat()
-	if (info.Mode() & os.ModeCharDevice) == os.ModeCharDevice {
-		fmt.Println("The command is intended to work with pipes.")
-		fmt.Println("Usage:")
-		fmt.Println("  cat yourfile.txt | searchr -pattern=<your_pattern>")
-	} else if info.Size() > 0 {*/
-	//fmt.Printf("using pipe mode...\n")
-	//reader := bufio.NewReader(os.Stdin)
+	// Reference: https://vmware.github.io/vsphere-storage-for-kubernetes/documentation/existing.html
+	// Essentially doing below here
+	// cat /sys/class/dmi/id/product_serial | sed -e 's/^VMware-//' -e 's/-/ /' | awk '{ print toupper($1$2$3$4 "-" $5$6 "-" $7$8 "-" $9$10 "-" $11$12$13$14$15$16) }'
+	t := time.Now()
+	fmt.Printf("current time is : %v\n", t)
+	fmt.Printf("week day is : %v\n", t.Weekday().String())
+	t, err := time.Parse(time.RFC1123, t.Format(time.RFC1123))
+	if err != nil {
+		fmt.Printf("[error] failed to parse: %v", err)
+		return
+	}
 }
