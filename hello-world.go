@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"time"
+	"os"
+	"strings"
 )
 
 // pod is a simple type to encapsulate a pod's uid and namespace
@@ -42,6 +43,22 @@ type CommandTask struct {
 	return client, nil
 }*/
 
+func isTLSEnabled() bool {
+	tls := strings.ToLower(os.Getenv("PX_ENABLE_TLS"))
+	if len(tls) != 0 ||
+		tls == "true" || tls == "yes" ||
+		tls == "1" || tls == "y" {
+		return true
+	}
+	return false
+}
+
+func testPanic(myList []string) {
+	savePtr := &myList
+	fmt.Println("printing nil")
+	fmt.Println(savePtr)
+}
+
 func main() {
 	/*var kubeconfig string
 	var node string
@@ -55,12 +72,5 @@ func main() {
 	// Reference: https://vmware.github.io/vsphere-storage-for-kubernetes/documentation/existing.html
 	// Essentially doing below here
 	// cat /sys/class/dmi/id/product_serial | sed -e 's/^VMware-//' -e 's/-/ /' | awk '{ print toupper($1$2$3$4 "-" $5$6 "-" $7$8 "-" $9$10 "-" $11$12$13$14$15$16) }'
-	t := time.Now()
-	fmt.Printf("current time is : %v\n", t)
-	fmt.Printf("week day is : %v\n", t.Weekday().String())
-	t, err := time.Parse(time.RFC1123, t.Format(time.RFC1123))
-	if err != nil {
-		fmt.Printf("[error] failed to parse: %v", err)
-		return
-	}
+	testPanic(nil)
 }

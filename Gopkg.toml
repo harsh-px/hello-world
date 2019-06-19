@@ -25,25 +25,38 @@
 #   unused-packages = true
 
 
-[[override]]
-  name = "github.com/docker/distribution"
-  version = "edc3ab29cdff8694dd6feb85cfeb4b5f1b38ed9c"
+
+#[[constraint]]
+#  name = "github.com/kubernetes/kubernetes"
+#  version = "1.11.0"
+
+#[[constraint]]
+#  name = "github.com/sirupsen/logrus"
+#  version = "1.0.5"
+
+#[[constraint]]
+#  name = "k8s.io/api"
+#  version = "kubernetes-1.11.0"
+
+#[[constraint]]
+#  name = "k8s.io/client-go"
+#  version = "8.0.0"
 
 [[constraint]]
-  name = "github.com/kubernetes/kubernetes"
-  version = "1.11.0"
+  name = "github.com/libopenstorage/openstorage"
+  branch = "release-6.0"
 
 [[constraint]]
-  name = "github.com/sirupsen/logrus"
-  version = "1.0.5"
+  name = "google.golang.org/grpc"
+  version = "v1.18.0"
 
 [[constraint]]
-  name = "k8s.io/api"
-  version = "kubernetes-1.11.0"
+  name = "github.com/gogo/protobuf"
+  version = "v1.2.0"
 
 [[constraint]]
-  name = "k8s.io/client-go"
-  version = "8.0.0"
+  name = "github.com/golang/protobuf"
+  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
 
 [prune]
   go-tests = true
