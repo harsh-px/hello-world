@@ -4,6 +4,8 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/libopenstorage/openstorage/pkg/grpcserver"
@@ -21,6 +23,7 @@ type portworxGrpcConnection struct {
 	conn        *grpc.ClientConn
 	dialOptions []grpc.DialOption
 	endpoint    string
+	lock        sync.Mutex
 }
 
 func (pg *portworxGrpcConnection) setDialOptions(tls bool) error {
@@ -41,6 +44,8 @@ func (pg *portworxGrpcConnection) setDialOptions(tls bool) error {
 }
 
 func (pg *portworxGrpcConnection) getGrpcConn() (*grpc.ClientConn, error) {
+	pg.lock.Lock()
+	defer pg.lock.Unlock()
 
 	if pg.conn == nil {
 		var err error
@@ -48,6 +53,7 @@ func (pg *portworxGrpcConnection) getGrpcConn() (*grpc.ClientConn, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Error connecting to GRPC server[%s]: %v", pg.endpoint, err)
 		}
+		logrus.Infof("Connected to %v", pg.endpoint)
 	}
 	return pg.conn, nil
 }
@@ -64,25 +70,31 @@ func main() {
 		return
 	}
 
-	go func() {
-		sdkConn := &portworxGrpcConnection{
-			endpoint: fmt.Sprintf("%s:%d", endpoint, port),
-		}
-		err := sdkConn.setDialOptions(false)
-		if err != nil {
-			logrus.Infof("Error: setDialOptions due to: %v", err)
-			return
-		}
+	sdkConn := &portworxGrpcConnection{
+		endpoint: fmt.Sprintf("%s:%d", endpoint, port),
+	}
+	err := sdkConn.setDialOptions(false)
+	if err != nil {
+		logrus.Infof("Error: setDialOptions due to: %v", err)
+		return
+	}
 
-		conn, err := sdkConn.getGrpcConn()
-		if err != nil {
-			logrus.Infof("Error: getGrpcConn due to: %v", err)
-			return
-		}
+	for {
+		go func() {
+			_, err := sdkConn.getGrpcConn()
+			if err != nil {
+				logrus.Infof("Error: getGrpcConn due to: %v", err)
+				return
+			}
 
-		logrus.Infof("Successfully got connection: %v", conn)
-	}()
+			// Waste some time for calls
+			time.Sleep(time.Duration(rand.Intn(30)) * time.Second)
+		}()
 
-	time.Sleep(5 * time.Hour)
+		// Wait 30 secs then try to reconnect
+		time.Sleep(30 * time.Second)
 
+		// Show a period for each loop
+		fmt.Printf(".")
+	}
 }
