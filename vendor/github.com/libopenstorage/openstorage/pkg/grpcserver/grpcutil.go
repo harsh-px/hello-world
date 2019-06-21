@@ -24,7 +24,6 @@ import (
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"github.com/libopenstorage/openstorage/pkg/util"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/metadata"
@@ -56,9 +55,9 @@ func Connect(address string, dialOptions []grpc.DialOption) (*grpc.ClientConn, e
 		return true, nil
 	}); err != nil {
 		// Clean up the connection
-		if err := conn.Close(); err != nil {
+		/*if err := conn.Close(); err != nil {
 			logrus.Warnf("Failed to close connection to %v: %v", address, err)
-		}
+		}*/
 		return nil, fmt.Errorf("Connection timed out")
 	}
 

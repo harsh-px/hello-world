@@ -44,8 +44,8 @@ func (pg *portworxGrpcConnection) setDialOptions(tls bool) error {
 }
 
 func (pg *portworxGrpcConnection) getGrpcConn() (*grpc.ClientConn, error) {
-	pg.lock.Lock()
-	defer pg.lock.Unlock()
+	//pg.lock.Lock()
+	//defer pg.lock.Unlock()
 
 	if pg.conn == nil {
 		var err error
@@ -79,22 +79,17 @@ func main() {
 		return
 	}
 
-	for {
-		go func() {
-			_, err := sdkConn.getGrpcConn()
-			if err != nil {
-				logrus.Infof("Error: getGrpcConn due to: %v", err)
-				return
-			}
+	go func() {
+		_, err := sdkConn.getGrpcConn()
+		if err != nil {
+			logrus.Infof("Error: getGrpcConn due to: %v", err)
+			return
+		}
 
-			// Waste some time for calls
-			time.Sleep(time.Duration(rand.Intn(30)) * time.Second)
-		}()
+		time.Sleep(time.Duration(rand.Intn(30)) * time.Second)
+	}()
 
-		// Wait 30 secs then try to reconnect
-		time.Sleep(30 * time.Second)
+	// Wait forever
+	time.Sleep(60 * time.Hour)
 
-		// Show a period for each loop
-		fmt.Printf(".")
-	}
 }
