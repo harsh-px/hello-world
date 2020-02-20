@@ -1,7 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"github.com/common-nighthawk/go-figure"
+)
 
 func main() {
-	fmt.Printf("Hello world")
+	myFigure := figure.NewFigure("Road to Hana", "", true)
+	myFigure.Print()
 }

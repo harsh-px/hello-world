@@ -70,6 +70,14 @@
   version = "0.2"
 
 [[projects]]
+  branch = "master"
+  digest = "1:083caed86277ee2b48cc2dd692321170ac5cbbca3d08cf2259a8b82c0cb0dee7"
+  name = "github.com/common-nighthawk/go-figure"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "67e0ed34491ae997c83c5aa2a1cae2cfd4b4ac41"
+
+[[projects]]
   digest = "1:f6e5e1bc64c2908167e6aa9a1fe0c084d515132a1c63ad5b6c84036aa06dc0c1"
   name = "github.com/coreos/go-oidc"
   packages = ["."]
@@ -394,6 +402,7 @@
   input-imports = [
     "github.com/aws/aws-sdk-go/service/ec2",
     "github.com/aws/aws-sdk-go/service/opsworks",
+    "github.com/common-nighthawk/go-figure",
     "github.com/libopenstorage/cloudops",
     "github.com/libopenstorage/cloudops/aws",
     "github.com/libopenstorage/openstorage/pkg/grpcserver",
